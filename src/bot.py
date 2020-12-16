@@ -162,23 +162,38 @@ def add_deadline(message):
             requests.post(url=getenv('API_SERVICE_URL')+"deadlines", data=post_data)
 
 
+@bot.message_handler(func= lambda message: message.text.startswith('/del'))
+def del_expense(message):
+    """Удаляет одну запись о дедлайне по её идентификатору"""
+    text = message.text.replace("@Timetables_bot", "")
+    deadline_id = int(text[4:])
+    responce = requests.delete(url=getenv('API_SERVICE_URL') + "deadlines", params={'id': deadline_id, 'groupId': message.chat.id})
+
+    if responce.status_code == 200:
+        msg = "Удалил ^-^"
+        bot.reply_to(message, msg)
+    elif responce.status_code == 417:
+        msg = f"Ошибка! У вас не достаточно прав!"
+        bot.reply_to(message, msg)
+    else:
+        msg = f"Ошибка сервиса: {responce.status_code}"
+        bot.reply_to(message, msg)
+
+
 @bot.message_handler(commands=['deadlines'])
 def send_deadlines(message):
     response = requests.get(getenv('API_SERVICE_URL')+"deadlines", params={'groupId': message.chat.id})
     if response.status_code != 200:
-        bot.send_message(message.chat.id, "Ошибка сервера: " + str(response.status_code))
+        bot.send_message(message.chat.id, "Ошибка сервиса: " + str(response.status_code))
     else:
         data = json.loads(response.text)
         if data["deadlines"] is None:
             bot.send_message(message.chat.id, "Кажись тут пусто")
         else:
-            user_message = "Текущие deadlines, о которых мне известно: \n\n"
-
-            for deadlines in data["deadlines"]:
-                title = deadlines["title"]
-                dateTime = deadlines["dateTime"]
-                creator = deadlines["creatorId"]
-                creator_name = bot.get_chat_member(message.chat.id, creator).user.username
-
-                user_message += title + ": " + dateTime + "\n" + "создатель: @" + str(creator_name) + "\n\n"
-            bot.send_message(message.chat.id, user_message)
+            user_message = [
+                f"{deadlines['title']}: {deadlines['dateTime']} \n"
+                f"создатель: @{bot.get_chat_member(message.chat.id, deadlines['creatorId']).user.username}\n"
+                f"/del{deadlines['id']} для удаления"
+                for deadlines in data["deadlines"]]
+            answer_message = "Текущие deadlines, о которых мне известно:\n\n" + "\n\n".join(user_message)
+            bot.send_message(message.chat.id, answer_message)
