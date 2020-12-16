@@ -1,0 +1,8 @@
+beautifulsoup4
+Flask
+pyTelegramBotAPI
+matplotlib
+numpy
+dateparser
+python-dotenv
+requests
