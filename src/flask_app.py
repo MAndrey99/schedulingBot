@@ -1,6 +1,10 @@
+import json
 import os
+
 import telebot
 from flask import Flask, request
+
+import logs
 from bot import bot, TOKEN
 
 server = Flask(__name__)
@@ -10,6 +14,17 @@ server = Flask(__name__)
 def getMessage():
     bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
     print('new message')
+    return "!", 200
+
+
+@server.route('/deadline_notify/' + TOKEN, methods=['POST'])
+def getDeadlineMessage():
+    text = request.stream.read().decode("utf-8")
+    logs.info('пришло уведомление о дедлайнах: ' + text)
+    data = json.loads(text)
+    if data["deadlines"] is not None:
+        for it in data["deadlines"]:
+            bot.send_message(it["groupId"], f'наступил дедлайн: {it["title"]}')
     return "!", 200
 
 
