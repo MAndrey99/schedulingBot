@@ -21,6 +21,7 @@ bot = telebot.TeleBot(TOKEN)
 bot.skip_pending = True
 logs.init(bot)
 
+
 @bot.message_handler(commands=['help'])
 def send_help(message):
     bot.send_message(message.chat.id, "I'm TimetableBot!\n.")
@@ -64,7 +65,6 @@ def deadlines_per_month_plot(message):
         except Exception as e:
             bot.send_message(message.chat.id, "Ошибка(")
             logs.error(e)
-
 
 
 @bot.message_handler(commands=['charlie_hebdo'])
@@ -162,7 +162,7 @@ def add_deadline(message):
             requests.post(url=getenv('API_SERVICE_URL')+"deadlines", data=post_data)
 
 
-@bot.message_handler(func= lambda message: message.text.startswith('/del'))
+@bot.message_handler(func=lambda message: message.text and message.text.startswith('/del'))
 def del_expense(message):
     """Удаляет одну запись о дедлайне по её идентификатору"""
     text = message.text.replace("@Timetables_bot", "")
