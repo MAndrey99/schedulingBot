@@ -155,6 +155,27 @@ def send_deadlines(message):
             f"{it.title}: {it.dateTime} \n"
             f"создатель: @{bot.get_chat_member(message.chat.id, it.creatorId).user.username}\n"
             f"/del{it.id} для удаления"
-            for it in deadlines]
+            for it in deadlines
+        ]
         answer_message = "Текущие deadlines, о которых мне известно:\n\n" + "\n\n".join(user_message)
+        bot.send_message(message.chat.id, answer_message)
+
+
+@bot.message_handler(commands=['schedule'])
+def send_deadlines(message):
+    try:
+        deadlines = service.get_schedule(message.chat.id)
+    except ApiException:
+        msg = f"Ошибка сервиса"
+        bot.reply_to(message, msg)
+        return
+
+    if not deadlines:
+        bot.send_message(message.chat.id, "дедлайнов нет")
+    else:
+        user_message = [
+            f"{it.title}: {it.dateTime} \n"
+            for it in deadlines
+        ]
+        answer_message = "Рекомендую следовать следующему росписанию:\n\n" + "\n\n".join(user_message)
         bot.send_message(message.chat.id, answer_message)

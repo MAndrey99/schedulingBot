@@ -35,4 +35,7 @@ class Service:
         self._request(post, "deadlines", Service.post_deadline, data=deadline.to_json())
 
     def delete_deadline(self, id: int, groupId: int):
-        self._request(delete, "deadlines", Service.delete_deadline, params={'id': id, 'groupId': groupId})
+        self._request(delete, f"deadlines/{id}", Service.delete_deadline, params={'groupId': groupId})
+
+    def get_schedule(self, groupId: int):
+        self._request(get, "schedule", Service.get_schedule, params={'groupId': groupId})
