@@ -38,4 +38,7 @@ class Service:
         self._request(delete, f"deadlines/{id}", Service.delete_deadline, params={'groupId': groupId})
 
     def get_schedule(self, groupId: int):
-        self._request(get, "schedule", Service.get_schedule, params={'groupId': groupId})
+        data = self._request(get, "schedule", Service.get_schedule, params={'groupId': groupId})
+        if data["deadlines"] is None:
+            return []
+        return [Deadline.from_dict(it) for it in data["deadlines"]]

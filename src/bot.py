@@ -1,12 +1,11 @@
-from datetime import *
 from os import getenv
 
 import telebot
-from dateparser import search
 from dotenv import load_dotenv, find_dotenv
 
 import logs
 import plotutil
+from util import search_dates, parse_time
 from deadline import Deadline
 from service import Service, ApiException
 
@@ -68,10 +67,7 @@ def add_deadline(message):
         try:
             chat_id = message.chat.id
             input_date = message.text
-            result = search.search_dates(input_date, ['ru'], settings={
-                'TIMEZONE': 'Europe/Moscow',
-                'RELATIVE_BASE': datetime.combine(date.today(), time(23, 59, 0)), 'PREFER_DATES_FROM': 'future'
-            })
+            result = search_dates(input_date)
             if result is None:
                 msg = bot.reply_to(message, 'Я не смог распознать дату, попробуйте еще раз!')
                 bot.register_next_step_handler(msg, process_date_step)
@@ -91,33 +87,47 @@ def add_deadline(message):
         except Exception:
             bot.reply_to(message, 'Ошибка!')
 
-    text_to_parse = message.text
-    if text_to_parse.startswith("/add"):
-        text_to_parse = text_to_parse.replace("/add", '')
+    text_to_parse = message.text.replace("/add", '').lstrip()
     if text_to_parse.startswith("/add" + getenv("BOT_NAME")):
         text_to_parse = text_to_parse.replace("/add" + getenv("BOT_NAME"), '')
     if message.chat.type == 'private' and text_to_parse == '':
         input_title(message)
     else:
-        result = search.search_dates(text_to_parse, ['ru'], settings={'TIMEZONE': 'Europe/Moscow',
-                                                                      'RELATIVE_BASE': datetime.combine(date.today(),
-                                                                        time(23, 59, 0)),
-                                                                      'PREFER_DATES_FROM': 'future'})
+        leadTimeBegin = text_to_parse.find('[')
+        if leadTimeBegin != -1:
+            leadTimeEnd = text_to_parse.rfind(']')
+            lt = parse_time(text_to_parse[leadTimeBegin + 1: leadTimeEnd])
+            text_to_parse = text_to_parse[:leadTimeBegin] + text_to_parse[leadTimeEnd + 1:]
+        else:
+            lt = None
+
+        result = search_dates(text_to_parse)
         if result is None:
             msg = "Упс, ошибка!"
             bot.send_message(message.chat.id, msg)
         else:
-            substring = result[0][0]
+            from datetime import datetime
+            if len(result) > 1:
+                result = list(result)
+                result[0] = list(result[0])
+                if result[0][1].year + result[0][1].month + result[0][1].day == 0:
+                    result[0], result[1] = result[1], result[0]
+                text_to_parse = text_to_parse.replace(result[1][0], '')
+                result[0][1] = datetime.combine(result[0][1].date(), result[1][1].time())
+
             deadline_time = result[0][1]
-            title = text_to_parse.replace(substring, '')
+            title = text_to_parse.replace(result[0][0], '')
+
             deadline_time = deadline_time.strftime(getenv('SERVICE_DATETIME_FMT'))
-            bot.send_message(message.chat.id, "Твой deadline: " + title + '\n' + str(deadline_time))
-            service.post_deadline(Deadline(
+            res = Deadline(
                 creatorId=message.from_user.id,
                 groupId=message.chat.id,
                 title=title,
-                dateTime=deadline_time
-            ))
+                dateTime=deadline_time,
+                leadTime=lt
+            )
+            bot.send_message(message.chat.id, "Твой deadline: \n" + res.to_string())
+            service.post_deadline(res)
 
 
 @bot.message_handler(func=lambda message: message.text and message.text.startswith('/del'))
@@ -152,7 +162,7 @@ def send_deadlines(message):
         bot.send_message(message.chat.id, "Кажись тут пусто")
     else:
         user_message = [
-            f"{it.title}: {it.dateTime} \n"
+            f"{it.to_string()} \n"
             f"создатель: @{bot.get_chat_member(message.chat.id, it.creatorId).user.username}\n"
             f"/del{it.id} для удаления"
             for it in deadlines
@@ -165,8 +175,11 @@ def send_deadlines(message):
 def send_deadlines(message):
     try:
         deadlines = service.get_schedule(message.chat.id)
-    except ApiException:
-        msg = f"Ошибка сервиса"
+    except ApiException as e:
+        if e.code == 417:
+            msg = 'всё не успеть('
+        else:
+            msg = "Ошибка сервиса"
         bot.reply_to(message, msg)
         return
 
@@ -174,7 +187,7 @@ def send_deadlines(message):
         bot.send_message(message.chat.id, "дедлайнов нет")
     else:
         user_message = [
-            f"{it.title}: {it.dateTime} \n"
+            f"{it.title} завершить до {it.dateTime}"
             for it in deadlines
         ]
         answer_message = "Рекомендую следовать следующему росписанию:\n\n" + "\n\n".join(user_message)
