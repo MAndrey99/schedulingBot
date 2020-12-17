@@ -165,7 +165,7 @@ def add_deadline(message):
 @bot.message_handler(func=lambda message: message.text and message.text.startswith('/del'))
 def del_expense(message):
     """Удаляет одну запись о дедлайне по её идентификатору"""
-    text = message.text.replace("@Timetables_bot", "")
+    text = message.text.replace("@" + getenv("BOT_NAME"), "")
     deadline_id = int(text[4:])
     responce = requests.delete(url=getenv('API_SERVICE_URL') + "deadlines", params={'id': deadline_id, 'groupId': message.chat.id})
 
