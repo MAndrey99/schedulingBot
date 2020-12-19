@@ -24,7 +24,7 @@ def send_help(message):
     bot.send_message(message.chat.id, "I'm TimetableBot!\n.")
 
 
-@bot.message_handler(commands=['deadlines_per_month_plot'])
+@bot.message_handler(commands=['total_deadlines_of_year_plot'])
 def deadlines_per_month_plot(message):
     deadlines = service.get_deadlines(message.chat.id, relevant=False)
     if not deadlines:
@@ -34,9 +34,9 @@ def deadlines_per_month_plot(message):
     bot.send_photo(message.chat.id, plot)
 
 
-@bot.message_handler(commands=['deadlines_per_day_of_week_plot'])
+@bot.message_handler(commands=['total_deadlines_of_week_plot', 'week_plot'])
 def deadlines_per_month_plot(message):
-    deadlines = service.get_deadlines(message.chat.id, relevant=False)
+    deadlines = service.get_deadlines(message.chat.id, relevant='total' not in message.text)
     if not deadlines:
         bot.send_message(message.chat.id, "Кажись дедлайнов нет")
         return

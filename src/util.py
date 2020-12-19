@@ -4,7 +4,7 @@ from typing import *
 
 from dateparser import search
 
-time_reg = re.compile(r'(?P<hours>\d\d):(?P<minutes>\d\d):(?P<seconds>\d\d)')
+time_reg = re.compile(r'(?P<hours>\d{1,2}(?:\.\d+)?)(?:(?P<minutes>\d{1,2})(?:(?P<seconds>\d{1,2}))?)?')
 
 
 def search_dates(text: str):
@@ -22,7 +22,11 @@ def parse_time(text: str) -> Optional[int]:
     """
     m = time_reg.match(text)
     if m:
-        return int(m.group('seconds')) + int(m.group('minutes'))*60 + int(m.group('hours'))*60*60
+        seconds = m.group('seconds')
+        minutes = m.group('minutes')
+        return (int(seconds) if seconds else 0) \
+               + (int(minutes) if minutes else 0)*60 \
+               + int(float(m.group('hours'))*60*60)
     else:
         return None
 
