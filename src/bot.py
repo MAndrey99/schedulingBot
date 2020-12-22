@@ -1,13 +1,15 @@
 from os import getenv
 
+import requests
 import telebot
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv, find_dotenv
 
 import logs
 import plotutil
-from util import search_dates, parse_time
 from deadline import Deadline
 from service import Service, ApiException
+from util import search_dates, parse_time
 
 load_dotenv(find_dotenv())
 del load_dotenv, find_dotenv
@@ -17,6 +19,12 @@ bot = telebot.TeleBot(TOKEN)
 service = Service(getenv('API_SERVICE_URL'))
 bot.skip_pending = True
 logs.init(bot)
+
+JOKES_URL = 'https://www.anekdot.ru/random/anekdot/'
+HEADERS = {
+    'User-Agent':
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36'
+}
 
 
 @bot.message_handler(commands=['help'])
@@ -192,3 +200,16 @@ def send_deadlines(message):
         ]
         answer_message = "Рекомендую следовать следующему росписанию:\n\n" + "\n\n".join(user_message)
         bot.send_message(message.chat.id, answer_message)
+
+
+@bot.message_handler(commands=['joke'])
+def send_joke(message):
+    """
+    рандомные шуточки в чат
+    """
+    r = requests.get(JOKES_URL, headers=HEADERS)
+    soup = BeautifulSoup(r.text, 'lxml')
+    joke_text = soup.find('div', {'class': 'topicbox', 'data-t': 'j'}).find('div', {'class': 'text'})
+    for br in joke_text.find_all("br"):
+        br.replace_with("\n" + br.text)
+    bot.send_message(message.chat.id, joke_text.text)

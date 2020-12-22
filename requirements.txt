@@ -5,3 +5,5 @@ numpy
 dateparser
 python-dotenv
 requests
+beautifulsoup4
+lxml
