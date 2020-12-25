@@ -8,7 +8,7 @@ time_reg = re.compile(r'(?P<hours>\d{1,2}(?:\.\d+)?)(?::(?P<minutes>\d{1,2})(?::
 
 
 def search_dates(text: str):
-    return search.search_dates(text.replace('-', '/'), ['ru'], settings={
+    return search.search_dates(text.replace('.', '/').replace('-', '/'), ['ru'], settings={
         'TIMEZONE': 'Europe/Moscow',
         'RELATIVE_BASE': datetime.combine(date.today(), time(23, 59, 0)),
         'PREFER_DATES_FROM': 'future'
