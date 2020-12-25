@@ -198,7 +198,7 @@ def send_deadlines(message):
             f"{it.title} завершить до {it.dateTime}"
             for it in deadlines
         ]
-        answer_message = "Рекомендую следовать следующему росписанию:\n\n" + "\n\n".join(user_message)
+        answer_message = "Рекомендую следовать следующему расписанию:\n\n" + "\n\n".join(user_message)
         bot.send_message(message.chat.id, answer_message)
 
 
