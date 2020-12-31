@@ -31,8 +31,8 @@ class Service:
             return []
         return [Deadline.from_dict(it) for it in data["deadlines"]]
 
-    def post_deadline(self, deadline: Deadline):
-        self._request(post, "deadlines", Service.post_deadline, data=deadline.to_json())
+    def post_deadline(self, deadline: Deadline) -> Deadline:
+        return Deadline.from_dict(self._request(post, "deadlines", Service.post_deadline, data=deadline.to_json()))
 
     def delete_deadline(self, id: int, groupId: int):
         self._request(delete, f"deadlines/{id}", Service.delete_deadline, params={'groupId': groupId})
@@ -42,3 +42,6 @@ class Service:
         if data["deadlines"] is None:
             return []
         return [Deadline.from_dict(it) for it in data["deadlines"]]
+
+    def patch_deadline(self, id, data):
+        self._request(patch, f"deadlines/{id}", Service.patch_deadline, data=str(data))

@@ -12,6 +12,7 @@ class Deadline:
         self.groupId = groupId
         self.description = description
         self.leadTime = None
+        self.priority = 0
         for k, v in kwargs.items():
             if k.endswith('dateTime'):
                 self.__setattr__(k, datetime.strptime(v, getenv('SERVICE_DATETIME_FMT')))

@@ -1,3 +1,4 @@
+import ast
 from os import getenv
 
 import requests
@@ -134,8 +135,32 @@ def add_deadline(message):
                 dateTime=deadline_time,
                 leadTime=lt
             )
-            bot.send_message(message.chat.id, "Твой deadline: \n" + res.to_string())
-            service.post_deadline(res)
+            deadline_id = service.post_deadline(res).id
+            markup = telebot.types.InlineKeyboardMarkup()
+            markup.add(telebot.types.InlineKeyboardButton(
+                text='Приоритет: средний', callback_data=str({'action': 'set_priority', 'id': deadline_id, 'value': 1}))
+            )
+            bot.send_message(message.chat.id, "Твой deadline: \n" + res.to_string(), reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def handle_query(call: telebot.types.CallbackQuery):
+    data = ast.literal_eval(call.data)
+    if data['action'] == 'set_priority':
+        service.patch_deadline(data['id'], {'priority': data['value']})
+        markup = telebot.types.InlineKeyboardMarkup()
+        new_p = data['value'] + 1
+        if new_p > 1:
+            new_p = -1
+        p_text = {
+            -1: 'высокий',
+            0: 'средний',
+            1: 'низкий'
+        }[new_p]
+        markup.add(telebot.types.InlineKeyboardButton(
+            text='Приоритет: ' + p_text, callback_data=str({'action': 'set_priority', 'id': data['id'], 'value': new_p}))
+        )
+        bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, call.inline_message_id, markup)
 
 
 @bot.message_handler(func=lambda message: message.text and message.text.startswith('/del'))
