@@ -4,8 +4,7 @@ import os
 import telebot
 from flask import Flask, request
 
-import logs
-from bot import bot, TOKEN
+from bot import bot, TOKEN, logs
 
 server = Flask(__name__)
 
