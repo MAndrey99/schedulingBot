@@ -10,52 +10,11 @@ from src.bot.util import search_dates, parse_time
 
 @bot.message_handler(commands=['add'])
 def add_deadline(message):
-    deadlines_dict = {}
-
-    def input_title(message):
-        msg = bot.reply_to(message, 'Введи заголовок дедлайна:')
-        bot.register_next_step_handler(msg, process_title_step)
-
-    def process_title_step(message):
-        try:
-            chat_id = message.chat.id
-            title = message.text
-            deadline = Deadline(title)
-            deadlines_dict[chat_id] = deadline
-            msg = bot.reply_to(message, 'Дата и/или время:')
-            bot.register_next_step_handler(msg, process_date_step)
-        except Exception:
-            bot.reply_to(message, 'Ошибка!')
-
-    def process_date_step(message):
-        try:
-            chat_id = message.chat.id
-            input_date = message.text
-            result = search_dates(input_date)
-            if result is None:
-                msg = bot.reply_to(message, 'Я не смог распознать дату, попробуйте еще раз!')
-                bot.register_next_step_handler(msg, process_date_step)
-                return
-            else:
-                deadline_time = result[0][1].strftime(getenv('SERVICE_DATETIME_FMT'))
-                deadlines_dict[chat_id].dateTime = deadline_time
-                bot.send_message(message.chat.id, f"Твой deadline: {deadlines_dict[chat_id].title}\n"
-                                                  f"{str(deadlines_dict[chat_id].dateTime)}")
-                service.post_deadline(Deadline(
-                    creatorId=message.from_user.id,
-                    groupId=message.chat.id,
-                    title=deadlines_dict[chat_id].title,
-                    dateTime=deadlines_dict[chat_id].dateTime
-                ))
-                del deadlines_dict[chat_id]
-        except Exception:
-            bot.reply_to(message, 'Ошибка!')
-
     text_to_parse = message.text.replace("/add", '').lstrip()
     if text_to_parse.startswith("/add" + getenv("BOT_NAME")):
         text_to_parse = text_to_parse.replace("/add" + getenv("BOT_NAME"), '')
     if message.chat.type == 'private' and text_to_parse == '':
-        input_title(message)
+        bot.send_message(message.chat.id, "для добавления дедлайна используйте синтаксис '/add заголовок и время'")
     else:
         leadTimeBegin = text_to_parse.find('[')
         if leadTimeBegin != -1:
@@ -66,7 +25,7 @@ def add_deadline(message):
             lt = None
 
         result = search_dates(text_to_parse)
-        if result is None:
+        if not result:
             msg = "Упс, ошибка!"
             bot.send_message(message.chat.id, msg)
         else:
@@ -79,13 +38,14 @@ def add_deadline(message):
                 result[0][1] = datetime.combine(result[0][1].date(), result[1][1].time())
 
             deadline_time = result[0][1]
-            title = text_to_parse.replace(result[0][0], '')
+            for it in result:
+                text_to_parse = text_to_parse.replace(it[0], '')
 
             deadline_time = deadline_time.strftime(getenv('SERVICE_DATETIME_FMT'))
             res = Deadline(
                 creatorId=message.from_user.id,
                 groupId=message.chat.id,
-                title=title,
+                title=text_to_parse,
                 dateTime=deadline_time,
                 leadTime=lt
             )
