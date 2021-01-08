@@ -22,6 +22,7 @@ class Service:
 
     def _request(self, method, path, method_from, **kwargs):
         response = method(self.url + path, **kwargs)
+        logs.info(f'{response.url} {response.status_code}')
         if response.status_code != 200:
             raise ApiException("Ошибка сервера: " + str(response.status_code), response.status_code, method_from)
         return json.loads(response.text) if response.text else None
