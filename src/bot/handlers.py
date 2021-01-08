@@ -34,7 +34,6 @@ def add_deadline(message):
                 result[0] = list(result[0])
                 if result[0][1].year + result[0][1].month + result[0][1].day == 0:
                     result[0], result[1] = result[1], result[0]
-                text_to_parse = text_to_parse.replace(result[1][0], '')
                 result[0][1] = datetime.combine(result[0][1].date(), result[1][1].time())
 
             deadline_time = result[0][1]
