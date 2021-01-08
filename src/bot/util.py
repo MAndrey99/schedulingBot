@@ -48,11 +48,14 @@ def search_dates(text: str):
         return res.getvalue().rstrip()
 
     text = delete_digits_in_words(text)
-    r1 = search.search_dates(''.join(filter(lambda it: it in digit_dates_symbols, text)), languages=['de']) or {}
+    r1 = search.search_dates(''.join(filter(lambda it: it in digit_dates_symbols, text)), languages=['de'], settings={
+        'DATE_ORDER': 'DMY'
+    }) or {}
     r2 = search.search_dates(text, languages=['ru', 'en'], settings={
         'TIMEZONE': 'Europe/Moscow',
         'RELATIVE_BASE': datetime.combine(date.today(), time(23, 59, 0)),
-        'PREFER_DATES_FROM': 'future'
+        'PREFER_DATES_FROM': 'future',
+        'DATE_ORDER': 'DMY'
     }) or {}
 
     if r2:
