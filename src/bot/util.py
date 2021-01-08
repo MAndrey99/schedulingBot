@@ -58,9 +58,11 @@ def search_dates(text: str):
         'DATE_ORDER': 'DMY'
     }) or {}
 
-    if r2:
+    if r1 and r2:
         # убираем из r2 записи которые входят в r1
         r2 = set(filter(lambda it2: all(map(lambda it1: it1[0].find(it2[0]) == -1, r1)), r2))
+        # а теперь наоборот
+        r1 = set(filter(lambda it1: all(map(lambda it2: it2[0].find(it1[0]) == -1, r2)), r1))
 
     return list(set(r1) | set(r2))
 
