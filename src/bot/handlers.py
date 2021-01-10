@@ -73,7 +73,7 @@ def del_expense(message):
 
 
 @bot.message_handler(commands=['deadlines'])
-def send_deadlines(message):
+def get_deadlines(message):
     try:
         deadlines = service.get_deadlines(message.chat.id)
     except ApiException:
@@ -96,9 +96,9 @@ def send_deadlines(message):
 
 
 @bot.message_handler(commands=['schedule'])
-def send_deadlines(message):
+def get_schedule(message):
     try:
-        deadlines = service.get_schedule(message.chat.id)
+        schedule = service.get_schedule(message.chat.id)
     except ApiException as e:
         if e.code == 417:
             msg = 'всё не успеть('
@@ -107,12 +107,4 @@ def send_deadlines(message):
         bot.reply_to(message, msg)
         return
 
-    if not deadlines:
-        bot.send_message(message.chat.id, "дедлайнов нет")
-    else:
-        user_message = [
-            f"{it.title} завершить до {it.dateTime}"
-            for it in deadlines
-        ]
-        answer_message = "Рекомендую следовать следующему расписанию:\n\n" + "\n\n".join(user_message)
-        bot.send_message(message.chat.id, answer_message)
+    bot.send_message(message.chat.id, schedule.to_string())

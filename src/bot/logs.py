@@ -7,36 +7,6 @@ from telebot import TeleBot
 initialized = False
 
 
-class CloneFilter(Filter):
-    def __init__(self):
-        super().__init__()
-        self.lastRecords: list[LogRecord] = []
-
-    def filter(self, record: LogRecord):
-        if record.levelno > INFO:  # только серьёздные ошибки можно пропускать чтобы облегчить логи!
-            return True
-
-        # проверяем было ли подобное исключение и очищаем старые из истории
-        i = 0
-        while i < len(self.lastRecords):
-            it = self.lastRecords[i]
-
-            if record.created - it.created > 20:
-                del self.lastRecords[i]  # очищаем старую ошибку
-                continue
-
-            if (record.lineno, record.module) == (it.lineno, it.module) and record.msg[:15] == it.msg[:15]:
-                debug(f"Возникло исключение, эквиволентное тому, что было {record.created - it.created:.1f} "
-                      f"секунд назад")
-                self.lastRecords[i] = record  # вместо старого кладем эквивалентное новое
-                return False
-
-            i += 1
-
-        self.lastRecords.append(record)
-        return True
-
-
 class TelegramMessageHandler(NullHandler):
     def __init__(self, bot: TeleBot, level):
         super().__init__(level)
@@ -57,7 +27,6 @@ def init(bot: TeleBot):
 
     root_logger = getLogger()
     root_logger.setLevel(INFO)
-    root_logger.addFilter(CloneFilter())
 
     # добавляем вывод в консоль
     print_handler = StreamHandler(stdout)

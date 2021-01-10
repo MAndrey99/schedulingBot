@@ -6,6 +6,7 @@ from requests import *
 
 import src.bot.logs as logs
 from src.bot.deadline import Deadline
+from src.bot.schedule import Schedule
 
 
 class ApiException(Exception):
@@ -19,7 +20,7 @@ class ApiException(Exception):
 class Service:
     def __init__(self, url):
         self.url = url
-        self.json_headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+        self.json_headers = {'Content-type': 'application/json'}
 
     def _request(self, method, path, method_from, **kwargs):
         response = method(self.url + path, **kwargs)
@@ -44,11 +45,9 @@ class Service:
     def delete_deadline(self, id: int, groupId: int):
         self._request(delete, f"deadlines/{id}", Service.delete_deadline, params={'groupId': groupId})
 
-    def get_schedule(self, groupId: int, algorithm: str = 'prioritySRTF') -> list[Deadline]:
+    def get_schedule(self, groupId: int, algorithm: str = 'prioritySRTF') -> Schedule:
         data = self._request(get, "schedule", Service.get_schedule, params={'groupId': groupId, 'algorithm': algorithm})
-        if data["deadlines"] is None:
-            return []
-        return [Deadline.from_dict(it) for it in data["deadlines"]]
+        return Schedule.from_dict(data)
 
     def patch_deadline(self, id: int, data: dict) -> Deadline:
         return Deadline.from_dict(self._request(
