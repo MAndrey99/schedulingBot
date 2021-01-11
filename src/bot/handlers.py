@@ -1,6 +1,10 @@
 from datetime import datetime
 from os import getenv
+from typing import Optional
 
+import telebot
+
+import src.bot.database as database
 from src.bot.bot import bot, inlineKeyboardManager
 from src.bot.deadline import Deadline
 from src.bot.inlineKeyboardManager import InlineKeyboardManager
@@ -53,27 +57,8 @@ def add_deadline(message):
             bot.send_message(message.chat.id, "Твой deadline: \n" + res.to_string(), reply_markup=markup)
 
 
-@bot.message_handler(func=lambda message: message.text and message.text.startswith('/del'))
-def del_expense(message):
-    """Удаляет одну запись о дедлайне по её идентификатору"""
-    text = message.text.replace(getenv("BOT_NAME"), "")
-    deadline_id = int(text[4:])
-
-    try:
-        service.delete_deadline(deadline_id, message.chat.id)
-    except ApiException as e:
-        if e.code == 417:
-            msg = f"Ошибка! У вас не достаточно прав!"
-        else:
-            msg = f"Ошибка сервиса"
-    else:
-        msg = "Удалил ^-^"
-
-    bot.reply_to(message, msg)
-
-
 @bot.message_handler(commands=['deadlines'])
-def get_deadlines(message):
+def send_deadlines(message):
     try:
         deadlines = service.get_deadlines(message.chat.id)
     except ApiException:
@@ -96,7 +81,7 @@ def get_deadlines(message):
 
 
 @bot.message_handler(commands=['schedule'])
-def get_schedule(message):
+def send_schedule(message) -> Optional[telebot.types.Message]:
     try:
         schedule = service.get_schedule(message.chat.id)
     except ApiException as e:
@@ -107,4 +92,22 @@ def get_schedule(message):
         bot.reply_to(message, msg)
         return
 
-    bot.send_message(message.chat.id, schedule.to_string())
+    return bot.send_message(message.chat.id, schedule.to_string())
+
+
+@bot.message_handler(commands=['dynamic_schedule'])
+def dynamic_schedule(message):
+    old_message_info = database.get_dynamic_schedule_message(message.chat.id)
+    if not old_message_info:
+        # отправляем новое расписание
+        schedule_message = send_schedule(message)
+        if schedule_message:
+            database.add_schedule_entry(schedule_message.message_id, schedule_message.chat.id)
+        bot.pin_chat_message(schedule_message.chat.id, schedule_message.message_id)
+    else:
+        # обновляем старое расписание
+        new_schedule = service.get_schedule(old_message_info.chat_id)
+        bot.edit_message_text(new_schedule.to_string(), old_message_info.chat_id, old_message_info.message_id)
+        message.chat.id = old_message_info.chat_id
+        message.message_id = old_message_info.message_id
+        bot.reply_to(message, 'расписание обновлено!')

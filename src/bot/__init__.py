@@ -8,5 +8,7 @@ import src.bot.handlers
 import src.bot.plot_handlers
 import src.bot.additional_handlers
 from src.bot.bot import bot, TOKEN
+from src.bot import database
 
 logs.init(bot)
+database.init()
