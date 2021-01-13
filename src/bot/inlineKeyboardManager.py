@@ -4,6 +4,7 @@ import telebot
 
 from src.bot.deadline import Deadline, DEADLINE_PRIORITY_MAP
 from src.bot.service import Service, ApiException
+from src.bot.event_manager import event_manager, Event, EventType
 
 
 class InlineKeyboardManager:
@@ -91,11 +92,13 @@ class InlineKeyboardManager:
         self.bot.edit_message_text(deadline.to_string(), q.message.chat.id, q.message.message_id)
         self.bot.edit_message_reply_markup(q.message.chat.id, q.message.message_id, q.inline_message_id,
                                            self.get_markup_for_deadline(deadline))
+        event_manager.emit(Event(EventType.SCHEDULE_CHANGING_CHECK, message=q.message))
 
     def _remove_deadline(self, q: telebot.types.CallbackQuery, data: dict):
         self.service.delete_deadline(data['id'], q.message.chat.id)
         self.bot.answer_callback_query(q.id, 'Дедлайн удалён!', show_alert=True)
         self.bot.delete_message(q.message.chat.id, q.message.message_id)
+        event_manager.emit(Event(EventType.SCHEDULE_CHANGING_CHECK, message=q.message))
 
     @staticmethod
     def get_markup_for_deadlines(deadlines: list[Deadline]) -> telebot.types.InlineKeyboardMarkup:

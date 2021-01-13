@@ -1,7 +1,8 @@
 import re
 from datetime import datetime, date, time
-from typing import *
+from hashlib import sha1
 from io import StringIO
+from typing import *
 
 from dateparser import search
 
@@ -89,3 +90,7 @@ def seconds_to_time_str(secs: int) -> str:
     minutes = secs // 60
     secs -= minutes * 60
     return f'{hours:0>2}:{minutes:0>2}:{secs:0>2}'
+
+
+def str_hash_without_digits(s: str) -> int:
+    return int(sha1(re.sub("\\d", "", s).encode("utf8")).hexdigest(), 16) % 2**64 - 9223372036854775808

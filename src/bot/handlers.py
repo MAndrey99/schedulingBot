@@ -1,3 +1,4 @@
+from copy import copy
 from datetime import datetime
 from os import getenv
 from typing import Optional
@@ -9,7 +10,8 @@ from src.bot.bot import bot, inlineKeyboardManager
 from src.bot.deadline import Deadline
 from src.bot.inlineKeyboardManager import InlineKeyboardManager
 from src.bot.service import service, ApiException
-from src.bot.util import search_dates, parse_time
+from src.bot.event_manager import event_manager, Event, EventType
+from src.bot.util import search_dates, parse_time, str_hash_without_digits
 
 
 @bot.message_handler(commands=['add'])
@@ -55,6 +57,7 @@ def add_deadline(message):
             res = service.post_deadline(res)
             markup = InlineKeyboardManager.get_markup_for_deadline(res)
             bot.send_message(message.chat.id, "Твой deadline: \n" + res.to_string(), reply_markup=markup)
+            event_manager.emit(Event(EventType.SCHEDULE_CHANGING_CHECK, message=message))
 
 
 @bot.message_handler(commands=['deadlines'])
@@ -81,33 +84,61 @@ def send_deadlines(message):
 
 
 @bot.message_handler(commands=['schedule'])
-def send_schedule(message) -> Optional[telebot.types.Message]:
-    try:
-        schedule = service.get_schedule(message.chat.id)
-    except ApiException as e:
-        if e.code == 417:
-            msg = 'всё не успеть('
-        else:
-            msg = "Ошибка сервиса"
-        bot.reply_to(message, msg)
-        return
+def send_schedule(message, schedule=None) -> Optional[telebot.types.Message]:
+    if not schedule:
+        try:
+            schedule = service.get_schedule(message.chat.id).to_string()
+        except ApiException as e:
+            if e.code == 417:
+                msg = 'всё не успеть('
+            else:
+                msg = "Ошибка сервиса"
+            bot.reply_to(message, msg)
+            return
 
-    return bot.send_message(message.chat.id, schedule.to_string())
+    return bot.send_message(message.chat.id, schedule)
 
 
-@bot.message_handler(commands=['dynamic_schedule'])
-def dynamic_schedule(message):
+def get_old_dynamic_schedule_message(message):
     old_message_info = database.get_dynamic_schedule_message(message.chat.id)
     if not old_message_info:
+        return None
+    old_message = copy(message)
+    old_message.chat.id = old_message_info.chat_id
+    old_message.message_id = old_message_info.message_id
+    return old_message
+
+
+def update_dynamic_schedule(old_message: telebot.types.Message, new_schedule=None):
+    # обновляем старое расписание
+    if not new_schedule:
+        new_schedule = service.get_schedule(old_message.chat.id).to_string()
+    try:
+        bot.edit_message_text(new_schedule, old_message.chat.id, old_message.message_id)
+        bot.reply_to(old_message, 'расписание обновлено!')
+        database.edit_dynamic_schedule_entry_schedule_hash(old_message.chat.id, new_schedule)
+    except telebot.apihelper.ApiException:
+        pass
+
+
+@event_manager.register_slot(EventType.SCHEDULE_CHANGED)
+@bot.message_handler(commands=['dynamic_schedule'])
+def dynamic_schedule(message: telebot.types.Message, update_only=False, schedule=None):
+    old_message = get_old_dynamic_schedule_message(message)
+    if not old_message and not update_only:
         # отправляем новое расписание
-        schedule_message = send_schedule(message)
+        schedule_message = send_schedule(message, schedule)
         if schedule_message:
-            database.add_schedule_entry(schedule_message.message_id, schedule_message.chat.id)
-        bot.pin_chat_message(schedule_message.chat.id, schedule_message.message_id)
+            database.add_schedule_entry(schedule_message.message_id, schedule_message.chat.id, schedule_message.text)
+            bot.pin_chat_message(schedule_message.chat.id, schedule_message.message_id)
     else:
-        # обновляем старое расписание
-        new_schedule = service.get_schedule(old_message_info.chat_id)
-        bot.edit_message_text(new_schedule.to_string(), old_message_info.chat_id, old_message_info.message_id)
-        message.chat.id = old_message_info.chat_id
-        message.message_id = old_message_info.message_id
-        bot.reply_to(message, 'расписание обновлено!')
+        update_dynamic_schedule(old_message, schedule)
+
+
+@event_manager.register_slot(EventType.SCHEDULE_CHANGING_CHECK)
+def schedule_changing_check(message: telebot.types.Message):
+    d = database.get_dynamic_schedule_message(message.chat.id)
+    if d:
+        schedule = service.get_schedule(message.chat.id).to_string()
+        if d.schedule_hash != str_hash_without_digits(schedule):
+            event_manager.emit(Event(EventType.SCHEDULE_CHANGED, message=message, schedule=schedule, update_only=True))
