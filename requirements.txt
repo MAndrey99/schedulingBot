@@ -7,3 +7,5 @@ python-dotenv
 requests
 beautifulsoup4
 lxml
+peewee
+psycopg2-binary

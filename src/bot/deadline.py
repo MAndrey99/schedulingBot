@@ -28,7 +28,7 @@ class Deadline:
                 self.__setattr__(k, v)
 
     def to_string(self, short=True):
-        if self.leadTime is not None:
+        if self.leadTime:
             lt = f'[{seconds_to_time_str(self.leadTime)}]'
             p = '\nПриоритет: ' + DEADLINE_PRIORITY_MAP[self.priority]
         else:
