@@ -8,16 +8,16 @@ from src.bot.util import str_hash_without_digits
 
 urlparse.uses_netloc.append('postgres')
 url = urlparse.urlparse(os.environ['DATABASE_URL'])
-
-
 DATABASE = {
     'user': url.username,
     'password': url.password,
     'host': url.hostname,
     'port': url.port,
+    'database': url.path[1:]
 }
 
-db = orm.PostgresqlDatabase('postgres', **DATABASE)
+db = orm.PostgresqlDatabase(**DATABASE)
+del url, urlparse, DATABASE
 
 
 class DynamicSchedules(orm.Model):
