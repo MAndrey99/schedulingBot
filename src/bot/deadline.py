@@ -35,7 +35,10 @@ class Deadline:
             lt = ''
             p = ''
         if not short and self.description:
-            desc = '\nОписание: ' + self.description
+            desc = '\nОписание: '
+            if '\n' in self.description:
+                desc += '\n'
+            desc += self.description
         else:
             desc = ''
         return f'[{self.id}] {self.title}: {self.dateTime}{lt}{p}{desc}'

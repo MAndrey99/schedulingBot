@@ -41,13 +41,13 @@ class InlineKeyboardManager:
                     'id': d.id
                 })
             ))
-        # markup.add(telebot.types.InlineKeyboardButton(
-        #     text=('добавить' if not d.description else 'изменить') + ' описание',
-        #     callback_data=str({
-        #         'action': 'edit_deadline_description',
-        #         'id': d.id
-        #     })
-        # ))
+        markup.add(telebot.types.InlineKeyboardButton(
+            text=('добавить' if not d.description else 'изменить') + ' описание',
+            callback_data=str({
+                'action': 'edit_deadline_description',
+                'id': d.id
+            })
+        ))
         markup.add(telebot.types.InlineKeyboardButton(
             text='удалить',
             callback_data=str({
@@ -58,7 +58,16 @@ class InlineKeyboardManager:
         return markup
 
     def _edit_deadline_description(self, q: telebot.types.CallbackQuery, data: dict):
-        pass  # TODO
+        def description_handler(message: telebot.types.Message):
+            if not message.text:
+                self.bot.send_message(message.chat.id, 'ошибка!')
+                return
+            d = self.service.patch_deadline(data['id'], {'description': message.text})
+            self.bot.edit_message_text(d.to_string(False), message.chat.id, q.message.message_id,
+                                       reply_markup=self.get_markup_for_deadline(d))
+
+        self.bot.send_message(q.message.chat.id, "Отправь мне новое описание")
+        self.bot.register_next_step_handler_by_chat_id(q.message.chat.id, description_handler)
 
     def _deadline_menu(self, q: telebot.types.CallbackQuery, data: dict):
         deadline = self.service.get_deadline(data['id'])
