@@ -55,7 +55,7 @@ def add_deadline(message):
                 leadTime=lt
             )
             res = service.post_deadline(res)
-            markup = InlineKeyboardManager.get_markup_for_deadline(res)
+            markup = InlineKeyboardManager.get_markup_for_deadline(res, message.chat.type == 'group')
             bot.send_message(message.chat.id, "Твой deadline: \n" + res.to_string(), reply_markup=markup)
             event_manager.emit(Event(EventType.SCHEDULE_CHANGING_CHECK, message=message))
 

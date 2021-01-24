@@ -27,11 +27,14 @@ class InlineKeyboardManager:
             'remove_deadline': self._remove_deadline,
 
             # получить сообщение с информацией о дедлайне для управления им
-            'about_deadline': self._about_deadline
+            'about_deadline': self._about_deadline,
+
+            # позволяет из группового чата добавить дедлайн в свой список дедлайнов
+            'import_deadline': self._import_deadline
         }
 
     @staticmethod
-    def get_markup_for_deadline(d: Deadline) -> telebot.types.InlineKeyboardMarkup:
+    def get_markup_for_deadline(d: Deadline, is_group=False) -> telebot.types.InlineKeyboardMarkup:
         markup = telebot.types.InlineKeyboardMarkup()
         if d.leadTime:
             markup.add(telebot.types.InlineKeyboardButton(
@@ -55,7 +58,23 @@ class InlineKeyboardManager:
                 'id': d.id
             })
         ))
+        if is_group:
+            markup.add(telebot.types.InlineKeyboardButton(
+                text='Импортировать',
+                callback_data=str({
+                    'action': 'import_deadline',
+                    'id': d.id
+                })
+            ))
+
         return markup
+
+    def _import_deadline(self, q: telebot.types.CallbackQuery, data: dict):
+        d = self.service.get_deadline(data['id'])
+        d.groupId = q.from_user.id
+        d = self.service.post_deadline(d)
+        self.bot.send_message(q.from_user.id, f'импортирован дедлайн:\n{d.to_string(False)}',
+                              reply_markup=self.get_markup_for_deadline(d, False))
 
     def _edit_deadline_description(self, q: telebot.types.CallbackQuery, data: dict):
         def description_handler(message: telebot.types.Message):
@@ -64,7 +83,7 @@ class InlineKeyboardManager:
                 return
             d = self.service.patch_deadline(data['id'], {'description': message.text})
             self.bot.edit_message_text(d.to_string(False), message.chat.id, q.message.message_id,
-                                       reply_markup=self.get_markup_for_deadline(d))
+                                       reply_markup=self.get_markup_for_deadline(d, q.message.chat.type == 'group'))
 
         self.bot.send_message(q.message.chat.id, "Отправь мне новое описание")
         self.bot.register_next_step_handler_by_chat_id(q.message.chat.id, description_handler)
@@ -72,7 +91,7 @@ class InlineKeyboardManager:
     def _deadline_menu(self, q: telebot.types.CallbackQuery, data: dict):
         deadline = self.service.get_deadline(data['id'])
         self.bot.edit_message_reply_markup(q.message.chat.id, q.message.message_id, q.inline_message_id,
-                                           self.get_markup_for_deadline(deadline))
+                                           self.get_markup_for_deadline(deadline, q.message.chat.type == 'group'))
 
     def _edit_deadline_priority(self, q: telebot.types.CallbackQuery, data: dict):
         deadline = self.service.get_deadline(data['id'])
@@ -126,7 +145,7 @@ class InlineKeyboardManager:
         try:
             deadline = self.service.get_deadline(data['id'])
             self.bot.send_message(q.message.chat.id, deadline.to_string(short=False),
-                                  reply_markup=self.get_markup_for_deadline(deadline))
+                                  reply_markup=self.get_markup_for_deadline(deadline, q.message.chat.type == 'group'))
         except ApiException as e:
             if e.code == 404:
                 self.bot.answer_callback_query(q.id, 'Дедлайн не найден!', show_alert=True)
