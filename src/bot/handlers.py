@@ -17,8 +17,8 @@ from src.bot.util import search_dates, parse_time, str_hash_without_digits
 @bot.message_handler(commands=['add'])
 def add_deadline(message):
     text_to_parse = message.text.replace("/add", '').lstrip()
-    if text_to_parse.startswith("/add" + getenv("BOT_NAME")):
-        text_to_parse = text_to_parse.replace("/add" + getenv("BOT_NAME"), '')
+    if text_to_parse.startswith(getenv("BOT_NAME")):
+        text_to_parse = text_to_parse.replace(getenv("BOT_NAME"), '').lstrip()
     if message.chat.type == 'private' and text_to_parse == '':
         bot.send_message(message.chat.id, "для добавления дедлайна используйте синтаксис '/add заголовок и время'")
     else:
@@ -55,7 +55,7 @@ def add_deadline(message):
                 leadTime=lt
             )
             res = service.post_deadline(res)
-            markup = InlineKeyboardManager.get_markup_for_deadline(res)
+            markup = InlineKeyboardManager.get_markup_for_deadline(res, message.chat.type == 'group')
             bot.send_message(message.chat.id, "Твой deadline: \n" + res.to_string(), reply_markup=markup)
             event_manager.emit(Event(EventType.SCHEDULE_CHANGING_CHECK, message=message))
 

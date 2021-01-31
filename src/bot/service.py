@@ -52,7 +52,7 @@ class Service:
     def patch_deadline(self, id: int, data: dict) -> Deadline:
         return Deadline.from_dict(self._request(
             patch, f"deadlines/{id}", Service.patch_deadline,
-            data=str(data), headers=self.json_headers
+            data=str(data).encode(), headers=self.json_headers
         ))
 
     def get_deadline(self, id: int) -> Deadline:

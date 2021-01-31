@@ -35,7 +35,10 @@ class Deadline:
             lt = ''
             p = ''
         if not short and self.description:
-            desc = '\nОписание: ' + self.description
+            desc = '\nОписание: '
+            if '\n' in self.description:
+                desc += '\n'
+            desc += self.description
         else:
             desc = ''
         return f'[{self.id}] {self.title}: {self.dateTime}{lt}{p}{desc}'
@@ -51,4 +54,7 @@ class Deadline:
         return res
 
     def to_json(self) -> str:
-        return json.dumps(dict(filter(lambda i: i[1] is not None, self.__dict__.items())))  # только поля без None
+        return json.dumps(dict(map(
+            lambda kv: (kv[0], kv[1].strftime(getenv('SERVICE_DATETIME_FMT')) if type(kv[1]) == datetime else kv[1]),
+            filter(lambda i: i[1] is not None and i[0] != 'id', self.__dict__.items())
+        )))
