@@ -19,45 +19,46 @@ def add_deadline(message):
     text_to_parse = message.text.replace("/add", '').lstrip()
     if text_to_parse.startswith(getenv("BOT_NAME")):
         text_to_parse = text_to_parse.replace(getenv("BOT_NAME"), '').lstrip()
-    if message.chat.type == 'private' and text_to_parse == '':
+    if text_to_parse == '':
         bot.send_message(message.chat.id, "для добавления дедлайна используйте синтаксис '/add заголовок и время'")
+        return
+
+    leadTimeBegin = text_to_parse.find('[')
+    if leadTimeBegin != -1:
+        leadTimeEnd = text_to_parse.rfind(']')
+        lt = parse_time(text_to_parse[leadTimeBegin + 1: leadTimeEnd])
+        text_to_parse = text_to_parse[:leadTimeBegin] + text_to_parse[leadTimeEnd + 1:]
     else:
-        leadTimeBegin = text_to_parse.find('[')
-        if leadTimeBegin != -1:
-            leadTimeEnd = text_to_parse.rfind(']')
-            lt = parse_time(text_to_parse[leadTimeBegin + 1: leadTimeEnd])
-            text_to_parse = text_to_parse[:leadTimeBegin] + text_to_parse[leadTimeEnd + 1:]
-        else:
-            lt = None
+        lt = None
 
-        result = search_dates(text_to_parse)
-        if not result:
-            msg = "Упс, ошибка!"
-            bot.send_message(message.chat.id, msg)
-        else:
-            if len(result) > 1:
-                result = list(result)
-                result[0] = list(result[0])
-                if result[0][1].year + result[0][1].month + result[0][1].day == 0:
-                    result[0], result[1] = result[1], result[0]
-                result[0][1] = datetime.combine(result[0][1].date(), result[1][1].time())
+    result = search_dates(text_to_parse)
+    if not result:
+        msg = "Упс, ошибка!"
+        bot.send_message(message.chat.id, msg)
+    else:
+        if len(result) > 1:
+            result = list(result)
+            result[0] = list(result[0])
+            if result[0][1].year + result[0][1].month + result[0][1].day == 0:
+                result[0], result[1] = result[1], result[0]
+            result[0][1] = datetime.combine(result[0][1].date(), result[1][1].time())
 
-            deadline_time = result[0][1]
-            for it in result:
-                text_to_parse = text_to_parse.replace(it[0], '')
+        deadline_time = result[0][1]
+        for it in result:
+            text_to_parse = text_to_parse.replace(it[0], '')
 
-            deadline_time = deadline_time.strftime(getenv('SERVICE_DATETIME_FMT'))
-            res = Deadline(
-                creatorId=message.from_user.id,
-                groupId=message.chat.id,
-                title=text_to_parse,
-                dateTime=deadline_time,
-                leadTime=lt
-            )
-            res = service.post_deadline(res)
-            markup = InlineKeyboardManager.get_markup_for_deadline(res, message.chat.type == 'group')
-            bot.send_message(message.chat.id, "Твой deadline: \n" + res.to_string(), reply_markup=markup)
-            event_manager.emit(Event(EventType.SCHEDULE_CHANGING_CHECK, message=message))
+        deadline_time = deadline_time.strftime(getenv('SERVICE_DATETIME_FMT'))
+        res = Deadline(
+            creatorId=message.from_user.id,
+            groupId=message.chat.id,
+            title=text_to_parse,
+            dateTime=deadline_time,
+            leadTime=lt
+        )
+        res = service.post_deadline(res)
+        markup = InlineKeyboardManager.get_markup_for_deadline(res, message.chat.type == 'group')
+        bot.send_message(message.chat.id, "Твой deadline: \n" + res.to_string(), reply_markup=markup)
+        event_manager.emit(Event(EventType.SCHEDULE_CHANGING_CHECK, message=message))
 
 
 @bot.message_handler(commands=['deadlines'])
