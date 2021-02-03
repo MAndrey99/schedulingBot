@@ -73,8 +73,16 @@ class InlineKeyboardManager:
         d = self.service.get_deadline(data['id'])
         d.groupId = q.from_user.id
         d = self.service.post_deadline(d)
-        self.bot.send_message(q.from_user.id, f'импортирован дедлайн:\n{d.to_string(False)}',
-                              reply_markup=self.get_markup_for_deadline(d, False))
+        try:
+            self.bot.send_message(q.from_user.id, f'импортирован дедлайн:\n{d.to_string(False)}',
+                                  reply_markup=self.get_markup_for_deadline(d, False))
+        except telebot.apihelper.ApiException:
+            self.bot.answer_callback_query(q.id, 'Ошибка!\nБоту не позволено отправлять вам сообщения. '
+                                                 'Напишите ему личное сообщение для разблокировки данной функции.',
+                                           show_alert=True)
+            self.service.delete_deadline(d.id, d.groupId)
+        else:
+            self.bot.answer_callback_query(q.id, 'Готово!', show_alert=True)
 
     def _edit_deadline_description(self, q: telebot.types.CallbackQuery, data: dict):
         def description_handler(message: telebot.types.Message):
